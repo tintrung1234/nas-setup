@@ -26,13 +26,12 @@ tailscale up --ssh
 # Cài Webmin
 # ========================
 echo "=== Cài Webmin ==="
-wget -qO - http://www.webmin.com/jcameron-key.asc | gpg --dearmor -o /usr/share/keyrings/webmin.gpg
 
-echo "deb [signed-by=/usr/share/keyrings/webmin.gpg] http://download.webmin.com/download/repository sarge contrib" \
-    | tee /etc/apt/sources.list.d/webmin.list
+cd /tmp
 
-apt update
-apt install -y webmin
+wget https://www.webmin.com/download/deb/webmin-current.deb
+
+apt install -y ./webmin-current.deb
 
 # ========================
 # Cấu hình Webmin File Manager
