@@ -4,6 +4,7 @@ set -e
 
 NAS_DIR="/srv/nas/shared"
 NAS_USER="nasuser"
+NAS_PASS="123456"
 
 echo "=== Update hệ thống ==="
 apt update && apt upgrade -y
@@ -26,18 +27,13 @@ tailscale up --ssh
 # Cài Webmin
 # ========================
 echo "=== Cài Webmin ==="
-
 cd /tmp
-
 wget https://www.webmin.com/download/deb/webmin-current.deb
-
 apt install -y ./webmin-current.deb
 
 # ========================
-# Cấu hình Webmin File Manager
+# Webmin File Manager
 # ========================
-echo "=== Cấu hình Webmin File Manager ==="
-
 mkdir -p /etc/webmin/filemin
 
 cat <<EOF > /etc/webmin/filemin/config
@@ -47,30 +43,45 @@ download=1
 max_upload=10240
 EOF
 
-# restart webmin
 systemctl restart webmin
 
 # ========================
-# Tạo user NAS
+# Tạo user NAS (FIX CHÍNH)
 # ========================
-id "$NAS_USER" &>/dev/null || adduser --disabled-password --gecos "" $NAS_USER
+echo "=== Tạo user NAS ==="
 
-echo "=== Set password Samba ==="
-(echo "123456"; echo "123456") | smbpasswd -s -a $NAS_USER
+if ! id "$NAS_USER" &>/dev/null; then
+    useradd -m -s /bin/bash "$NAS_USER"
+fi
+
+# set password Linux
+echo "$NAS_USER:$NAS_PASS" | chpasswd
+
+# tạo Samba user chuẩn
+(echo "$NAS_PASS"; echo "$NAS_PASS") | smbpasswd -s -a "$NAS_USER"
+smbpasswd -e "$NAS_USER"
 
 # ========================
-# Tạo thư mục NAS
+# Thư mục NAS
 # ========================
-mkdir -p $NAS_DIR
-chown -R $NAS_USER:$NAS_USER $NAS_DIR
-chmod -R 755 $NAS_DIR
+mkdir -p "$NAS_DIR"
+chown -R "$NAS_USER:$NAS_USER" "$NAS_DIR"
+chmod -R 755 "$NAS_DIR"
 
 # ========================
-# Samba
+# Samba config (FIX)
 # ========================
 cp /etc/samba/smb.conf /etc/samba/smb.conf.bak
 
+# xóa config cũ tránh trùng
+sed -i '/\[shared\]/,/^$/d' /etc/samba/smb.conf
+
 cat <<EOF >> /etc/samba/smb.conf
+
+[global]
+   security = user
+   map to guest = never
+   ntlm auth = yes
 
 [shared]
    path = $NAS_DIR
@@ -78,7 +89,6 @@ cat <<EOF >> /etc/samba/smb.conf
    read only = no
    guest ok = no
    valid users = $NAS_USER
-   force user = $NAS_USER
 EOF
 
 systemctl restart smbd
@@ -102,7 +112,7 @@ if [ -n "$DISK_NAME" ]; then
         exit 1
     fi
 
-    UUID=$(blkid -s UUID -o value $DEVICE)
+    UUID=$(blkid -s UUID -o value "$DEVICE")
 
     if [ -z "$UUID" ]; then
         echo "Không có UUID (ổ chưa format)"
@@ -135,7 +145,7 @@ IP=$(tailscale ip -4 | head -n1)
 echo "================================="
 echo "NAS setup hoàn tất"
 echo "User: $NAS_USER"
-echo "Pass: 123456"
+echo "Pass: $NAS_PASS"
 echo ""
 echo "Webmin: https://$IP:10000"
 echo "Samba: //$IP/shared"
