@@ -122,7 +122,7 @@ fi
 # ========================
 # Firewall
 # ========================
-ufw allow OpenSSH
+ufw allow 22/tcp
 ufw allow 10000/tcp
 ufw allow in on tailscale0
 ufw --force enable
