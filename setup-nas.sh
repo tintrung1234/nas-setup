@@ -136,7 +136,7 @@ IP=$(tailscale ip -4 | head -n1)
 echo "================================="
 echo "NAS setup hoàn tất"
 echo "User: $NAS_USER"
-echo "Pass: 123456 (đổi ngay)"
+echo "Pass: 123456"
 echo ""
 echo "Webmin: https://$IP:10000"
 echo "Samba: //$IP/shared"
